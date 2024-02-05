@@ -1,0 +1,6 @@
+[submodule "glfw"]
+	path = glfw
+	url = https://github.com/glfw/glfw
+[submodule "Dependencies/CMakeGlad"]
+	path = Dependencies/CMakeGlad
+	url = https://github.com/CometWeaversLab/CMakeGlad
