@@ -1,8 +1,8 @@
 // #define GLAD_GL_IMPLEMENTATION
 // #include <glad/gl.h>
 // #define GLFW_INCLUDE_NONE
-#include <nuklear.h>
 #include <GLFW/glfw3.h>
+#include <nuklear.h>
 #include "linmath.h"
 
 #include <stdlib.h>
@@ -15,7 +15,57 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 
-std::vector<std::pair<GLdouble,GLdouble>> dots;
+typedef std::pair<GLdouble,GLdouble> coords;
+typedef std::vector<coords> points;
+
+points dots;
+
+coords deCasteljau(std::size_t r, std::size_t i, double t)
+{
+    if(r == 0)
+        return dots[i];
+    coords p1 = deCasteljau(r-1, i, t),
+           p2 = deCasteljau(r-1, i+1,t);
+    return std::make_pair((1 - t) * p1.first + t * p2.first, (1 - t) * p1.second + t * p2.second);
+}
+
+coords polar(std::size_t r, std::size_t i, double t, double p, std::size_t power, points& polarLines)
+{
+    if(r == 0)
+        return dots[i];
+    coords p1 = polar(r-1, i, t, p, power, polarLines),
+           p2 = polar(r-1, i+1,t, p, power, polarLines);
+    // polarLines.push_back(p1);
+    // polarLines.push_back(p2);
+    if(r <= power){
+        return std::make_pair((1 - p) * p1.first + p * p2.first, (1 - p) * p1.second + p * p2.second);
+    }
+    return std::make_pair((1 - t) * p1.first + t * p2.first, (1 - t) * p1.second + t * p2.second);
+}
+
+points computePoints(double minT, double maxT, std::size_t segments)
+{
+    points pointlist;
+    double t;
+    for(std::size_t i = 0; i <= segments; ++i)
+    {
+        t = minT + i/(double)segments * (maxT + minT);
+        pointlist.push_back(deCasteljau(dots.size() - 1, 0, t));
+    }
+    return pointlist;
+}
+
+points computePolarPoints(double minT, double maxT, std::size_t segments, double p, std::size_t power, points& polarLines)
+{
+    points pointlist;
+    double t;
+    for(std::size_t i = 0; i <= segments; ++i)
+    {
+        t = minT + i/(double)segments * (maxT + minT);
+        pointlist.push_back(polar(dots.size() - 1, 0, t, p, power, polarLines));
+    }
+    return pointlist;
+}
 
 static void error_callback(int error, const char* description)
 {
@@ -30,13 +80,13 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
-    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
         GLdouble xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
-        std::cout << "x: " << xpos << " y: " << ypos ;//<< std::endl;
+        // std::cout << "x: " << xpos << " y: " << ypos ;//<< std::endl;
         dots.push_back(std::make_pair(xpos - SCREEN_WIDTH/2, ypos - SCREEN_HEIGHT/2));
-        std::cout << " & x: " << dots.back().first + SCREEN_WIDTH/2 << " y: " << dots.back().second + SCREEN_HEIGHT/2 << " lenght: " << dots.size() << std::endl;
+        // std::cout << " & x: " << dots.back().first + SCREEN_WIDTH/2 << " y: " << dots.back().second + SCREEN_HEIGHT/2 << " lenght: " << dots.size() << std::endl;
     }
 }
 
@@ -69,6 +119,7 @@ int main(void)
     glEnable(GL_MULTISAMPLE);  
 
 
+    points bezierPoints, polarPoints, polarLines;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -90,6 +141,7 @@ int main(void)
 
         glEnable( GL_POINT_SMOOTH ); // make the point circular
         glPointSize( 10 ); // must be added before glDrawArrays is called
+        glColor3f(1.0f, 1.0f, 1.0f);
         glBegin( GL_POINTS);
         for(auto dot : dots)
         {   
@@ -98,14 +150,50 @@ int main(void)
         glEnd();
         glDisable( GL_POINT_SMOOTH ); // stop the smoothing to make the points circular
 
-        glLineWidth(3);
+        glLineWidth(2);
+        glColor3f(0.0f, 0.0f, 0.0f);
         glBegin( GL_LINES);
-        for(int i = 0; i < (int)dots.size() - 1; ++i)
+        for(std::size_t i = 1; i < dots.size(); ++i)
         {
+            glVertex3d(dots[i - 1].first / (SCREEN_WIDTH / 2), - dots[i - 1].second / (SCREEN_HEIGHT / 2), 0);
             glVertex3d(dots[i].first / (SCREEN_WIDTH / 2), - dots[i].second / (SCREEN_HEIGHT / 2), 0);
-            glVertex3d(dots[i + 1].first / (SCREEN_WIDTH / 2), - dots[i + 1].second / (SCREEN_HEIGHT / 2), 0);
         }
         glEnd();
+
+        if(dots.size() > 2)
+        {
+            bezierPoints = computePoints(0,1,40);
+            glColor3f(1.0f, 0.0f, 0.0f);
+            glBegin( GL_LINES);
+            for(std::size_t i = 1; i < bezierPoints.size(); ++i)
+            {
+                glVertex3d(bezierPoints[i - 1].first / (SCREEN_WIDTH / 2), - bezierPoints[i - 1].second / (SCREEN_HEIGHT / 2), 0);
+                glVertex3d(bezierPoints[i].first / (SCREEN_WIDTH / 2), - bezierPoints[i].second / (SCREEN_HEIGHT / 2), 0);
+            }
+            glEnd();
+            
+        }
+
+        if(dots.size() > 3){
+            polarPoints = computePolarPoints(0,1,40, 1, 0.9, polarLines);
+            glColor3f(1.0f, 1.0f, 0.0f);
+            glBegin( GL_LINES);
+            for(std::size_t i = 1; i < polarPoints.size(); ++i)
+            {
+                glVertex3d(polarPoints[i - 1].first / (SCREEN_WIDTH / 2), - polarPoints[i - 1].second / (SCREEN_HEIGHT / 2), 0);
+                glVertex3d(polarPoints[i].first / (SCREEN_WIDTH / 2), - polarPoints[i].second / (SCREEN_HEIGHT / 2), 0);
+            }
+            glEnd();
+
+            glColor3f(0.0f, 1.0f, 1.0f);
+            glBegin( GL_LINES);
+            for(std::size_t i = 1; i < polarLines.size(); ++i)
+            {
+                glVertex3d(polarLines[i - 1].first / (SCREEN_WIDTH / 2), - polarLines[i - 1].second / (SCREEN_HEIGHT / 2), 0);
+                glVertex3d(polarLines[i].first / (SCREEN_WIDTH / 2), - polarLines[i].second / (SCREEN_HEIGHT / 2), 0);
+            }
+            glEnd();
+        }
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 
