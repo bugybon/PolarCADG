@@ -32,21 +32,6 @@ set( POLAR-SRC
 
 add_executable( Polar ${POLAR-SRC} ${GLAD_GL} )
 
-# Include CMake Glad and customize its properties
-include("Dependencies/CMakeGlad/CMakeLists.txt")
-set(GLAD_GIT_SUBMODULE_PATH "${PROJECT_SOURCE_DIR}/Dependencies/Glad" CACHE INTERNAL "" FORCE) 
-set(GLAD_LIBRARY_MODE    "STATIC" CACHE INTERNAL "" FORCE)
-set(GLAD_API_GL_PROFILE  "CORE"   CACHE INTERNAL "" FORCE)
-set(GLAD_API_GL_VERSION  "4.3"    CACHE INTERNAL "" FORCE)
-set(GLAD_API_WGL_VERSION "1.0"    CACHE INTERNAL "" FORCE)
-set(GLAD_API_EXTENSIONS  "WGL_ARB_create_context" CACHE INTERNAL "" FORCE)
-
-# Create the "Glad" target (will generate source files)
-target_create_glad()
-
-# Add the "Glad" target as a dependency of your project
-target_add_dependency_glad(MyProject)
-
 target_link_libraries( Polar ${OPENGL_LIBRARIES} glfw )
 if( MSVC )
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0")
