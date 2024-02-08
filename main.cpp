@@ -5,6 +5,8 @@
 #include <nuklear.h>
 #include "linmath.h"
 
+#include <algorithm>
+
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -12,8 +14,8 @@
 #include <vector>
 #include <stdexcept>
 
-#define SCREEN_WIDTH 640
-#define SCREEN_HEIGHT 480
+#define SCREEN_WIDTH 1000
+#define SCREEN_HEIGHT 600
 
 typedef std::pair<GLdouble,GLdouble> coords;
 typedef std::vector<coords> points;
@@ -35,8 +37,10 @@ coords polar(std::size_t r, std::size_t i, double t, double p, std::size_t power
         return dots[i];
     coords p1 = polar(r-1, i, t, p, power, polarLines),
            p2 = polar(r-1, i+1,t, p, power, polarLines);
-    // polarLines.push_back(p1);
-    // polarLines.push_back(p2);
+    // if (std::find(dots.begin(), dots.end(), p1) == dots.end() && std::find(polarLines.begin(), polarLines.end(), p1) == polarLines.end())
+    //     polarLines.push_back(p1);
+    // if (std::find(dots.begin(), dots.end(), p2) == dots.end() && std::find(polarLines.begin(), polarLines.end(), p2) == polarLines.end())
+    //     polarLines.push_back(p2);
     if(r <= power){
         return std::make_pair((1 - p) * p1.first + p * p2.first, (1 - p) * p1.second + p * p2.second);
     }
@@ -86,7 +90,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         glfwGetCursorPos(window, &xpos, &ypos);
         // std::cout << "x: " << xpos << " y: " << ypos ;//<< std::endl;
         dots.push_back(std::make_pair(xpos - SCREEN_WIDTH/2, ypos - SCREEN_HEIGHT/2));
-        // std::cout << " & x: " << dots.back().first + SCREEN_WIDTH/2 << " y: " << dots.back().second + SCREEN_HEIGHT/2 << " lenght: " << dots.size() << std::endl;
+        // std::cout << " & x: " << dots.back().first + SCREEN_WIDTH/2 << " y: " << dots.back().second + SCREEN_HEIGHT/2 << std::endl;
+        std::cout << " lenght: " << dots.size() << std::endl;
     }
 }
 
@@ -104,7 +109,7 @@ int main(void)
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Polar", NULL, NULL);
+    window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Polar", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -120,6 +125,7 @@ int main(void)
 
 
     points bezierPoints, polarPoints, polarLines;
+    int powerPolar = 2;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -162,7 +168,7 @@ int main(void)
 
         if(dots.size() > 2)
         {
-            bezierPoints = computePoints(0,1,40);
+            bezierPoints = computePoints(0,1,10*dots.size());
             glColor3f(1.0f, 0.0f, 0.0f);
             glBegin( GL_LINES);
             for(std::size_t i = 1; i < bezierPoints.size(); ++i)
@@ -174,8 +180,8 @@ int main(void)
             
         }
 
-        if(dots.size() > 3){
-            polarPoints = computePolarPoints(0,1,40, 1, 0.9, polarLines);
+        if(dots.size() > 2 + powerPolar){
+            polarPoints = computePolarPoints(0,1,10*dots.size(), 0.3, powerPolar, polarLines);
             glColor3f(1.0f, 1.0f, 0.0f);
             glBegin( GL_LINES);
             for(std::size_t i = 1; i < polarPoints.size(); ++i)
