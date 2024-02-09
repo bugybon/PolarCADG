@@ -2,9 +2,19 @@
 // #include <glad/gl.h>
 // #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_IMPLEMENTATION
+#define NK_GLFW_GL2_IMPLEMENTATION
+#define NK_KEYSTATE_BASED_INPUT
 #include <nuklear.h>
 #include <nuklear_glfw_gl2.h>
-#include "linmath.h"
+
 
 #include <cmath>
 #include <stdlib.h>
@@ -14,16 +24,16 @@
 #include <vector>
 #include <stdexcept>
 
-#define SCREEN_WIDTH 1000
-#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 1200
+#define SCREEN_HEIGHT 800
 #define POINT_RADIUS 6
+#define MENU_WIDTH 230
 
 typedef std::pair<GLdouble,GLdouble> coords;
 typedef std::vector<coords> points;
 
 points dots;
-bool movePoint;
-std::size_t gottenPoint;
+std::size_t gottenPointIndex;
 
 coords deCasteljau(std::size_t r, std::size_t i, double t)
 {
@@ -56,7 +66,7 @@ points computePoints(double minT, double maxT, std::size_t segments)
     double t;
     for(std::size_t i = 0; i <= segments; ++i)
     {
-        t = minT + i/(double)segments * (maxT + minT);
+        t = minT + i/(double)segments * (maxT - minT);
         pointlist.push_back(deCasteljau(dots.size() - 1, 0, t));
     }
     return pointlist;
@@ -68,7 +78,7 @@ points computePolarPoints(double minT, double maxT, std::size_t segments, double
     double t;
     for(std::size_t i = 0; i <= segments; ++i)
     {
-        t = minT + i/(double)segments * (maxT + minT);
+        t = minT + i/(double)segments * (maxT - minT);
         pointlist.push_back(polar(dots.size() - 1, 0, t, p, power, polarLines));
     }
     return pointlist;
@@ -91,10 +101,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     {
         GLdouble xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
-        // std::cout << "x: " << xpos << " y: " << ypos ;//<< std::endl;
+        if(xpos <= MENU_WIDTH )
+        {
+            return;
+        }
         dots.push_back(std::make_pair(xpos - SCREEN_WIDTH/2, ypos - SCREEN_HEIGHT/2));
-        // std::cout << " & x: " << dots.back().first + SCREEN_WIDTH/2 << " y: " << dots.back().second + SCREEN_HEIGHT/2 << std::endl;
-        std::cout << " lenght: " << dots.size() << std::endl;
     }
 
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
@@ -107,23 +118,20 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         {
             if(std::pow(dots[i].first - xpos, 2) + std::pow(dots[i].second - ypos, 2) <= POINT_RADIUS * POINT_RADIUS)
             {   
-                movePoint = true;
-                gottenPoint = i;
-                std::cout << "gotten" << std::endl;
+                gottenPointIndex = i;
             }
         }
     }
 
     if(button == GLFW_MOUSE_BUTTON_RIGHT && action != GLFW_PRESS){
-        movePoint = false;
-        gottenPoint = -1;
+        gottenPointIndex = -1;
     }
 }
 
 int main(void)
 {   
     glfwInit();
-    glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_SAMPLES, 10);
 
     /* Platform */
     static GLFWwindow *window;
@@ -137,6 +145,7 @@ int main(void)
         fprintf(stdout, "[GFLW] failed to init!\n");
         exit(1);
     }
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     /* Create a windowed mode window and its OpenGL context */
     window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Polar", NULL, NULL);
@@ -145,6 +154,18 @@ int main(void)
         glfwTerminate();
         return -1;
     }
+    glfwMakeContextCurrent(window);
+    glfwGetWindowSize(window, &width, &height);
+
+    /* GUI */
+    ctx = nk_glfw3_init(window, NK_GLFW3_INSTALL_CALLBACKS);
+    {
+        struct nk_font_atlas *atlas;
+        nk_glfw3_font_stash_begin(&atlas);
+        nk_glfw3_font_stash_end();
+    }
+
+
     glfwSetKeyCallback(window, key_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     /* Make the window's context current */
@@ -156,13 +177,57 @@ int main(void)
 
     points bezierPoints, polarPoints, polarLines;
     int powerPolar = 2;
-    gottenPoint = -1;
-
+    gottenPointIndex = -1;
+    bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
-    {
-        /* Render here */
+    {   
+        glfwPollEvents();
+
+        /* Input */
+        glfwPollEvents();
+        nk_glfw3_new_frame();
+
+        /* GUI */
+        if (nk_begin(ctx, "Contorls", nk_rect(0, 0, MENU_WIDTH, SCREEN_HEIGHT),
+            NK_WINDOW_TITLE))
+        {
+            enum {EASY, HARD};
+            static int op = EASY;
+            static int property = 20;
+            nk_layout_row_static(ctx, 30, 80, 1);
+            if (nk_button_label(ctx, "button"))
+                fprintf(stdout, "button pressed\n");
+
+            nk_layout_row_dynamic(ctx, 30, 2);
+            if (nk_option_label(ctx, "easy", op == EASY)) op = EASY;
+            if (nk_option_label(ctx, "hard", op == HARD)) op = HARD;
+
+            nk_layout_row_dynamic(ctx, 25, 1);
+            nk_property_int(ctx, "Compression:", 0, &property, 100, 10, 1);
+
+            nk_layout_row_dynamic(ctx, 20, 1);
+            nk_label(ctx, "background:", NK_TEXT_LEFT);
+            nk_layout_row_dynamic(ctx, 25, 1);
+            if (nk_combo_begin_color(ctx, nk_rgb_cf(bg), nk_vec2(nk_widget_width(ctx),400))) {
+                nk_layout_row_dynamic(ctx, 120, 1);
+                bg = nk_color_picker(ctx, bg, NK_RGBA);
+                nk_layout_row_dynamic(ctx, 25, 1);
+                bg.r = nk_propertyf(ctx, "#R:", 0, bg.r, 1.0f, 0.01f,0.005f);
+                bg.g = nk_propertyf(ctx, "#G:", 0, bg.g, 1.0f, 0.01f,0.005f);
+                bg.b = nk_propertyf(ctx, "#B:", 0, bg.b, 1.0f, 0.01f,0.005f);
+                bg.a = nk_propertyf(ctx, "#A:", 0, bg.a, 1.0f, 0.01f,0.005f);
+                nk_combo_end(ctx);
+            }
+        }
+        nk_end(ctx);
+
+
+        /* Draw */
+        glfwGetWindowSize(window, &width, &height);
+        glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(bg.r, bg.g, bg.b, bg.a);
 
 
         glEnable( GL_POINT_SMOOTH ); // make the point circular
@@ -186,13 +251,25 @@ int main(void)
         }
         glEnd();
 
-        if(gottenPoint != -1){
+        if(gottenPointIndex != -1){
             GLdouble xpos, ypos;
             glfwGetCursorPos(window, &xpos, &ypos);
+            if(xpos < MENU_WIDTH + POINT_RADIUS ){
+                xpos = MENU_WIDTH + POINT_RADIUS;
+            }
+            if(xpos > SCREEN_WIDTH - POINT_RADIUS){
+                xpos = SCREEN_WIDTH - POINT_RADIUS;
+            }
+            if(ypos < POINT_RADIUS){
+                ypos = POINT_RADIUS;
+            }
+            if(ypos > SCREEN_HEIGHT - POINT_RADIUS){
+                ypos = SCREEN_HEIGHT - POINT_RADIUS;
+            }
             xpos = xpos - SCREEN_WIDTH/2;
             ypos = ypos - SCREEN_HEIGHT/2;
-            dots[gottenPoint].first = xpos;
-            dots[gottenPoint].second = ypos;
+            dots[gottenPointIndex].first = xpos;
+            dots[gottenPointIndex].second = ypos;
         }
 
         if(dots.size() > 2)
@@ -221,6 +298,9 @@ int main(void)
             glEnd();
 
             glColor3f(0.0f, 1.0f, 1.0f);
+
+            glBegin(GL_POINTS);
+
             glBegin( GL_LINES);
             for(std::size_t i = 1; i < polarLines.size(); ++i)
             {
@@ -230,12 +310,13 @@ int main(void)
             glEnd();
         }
         /* Swap front and back buffers */
+        nk_glfw3_render(NK_ANTI_ALIASING_ON);
         glfwSwapBuffers(window);
 
         /* Poll for and process events */
-        glfwPollEvents();
+        // glfwPollEvents();
     }
-
+    nk_glfw3_shutdown();
     glfwTerminate();
     return 0;
 }
