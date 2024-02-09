@@ -176,7 +176,8 @@ int main(void)
 
 
     points bezierPoints, polarPoints, polarLines;
-    int powerPolar = 2;
+    int powerPolar = 1;
+    double p = 0.3;
     gottenPointIndex = -1;
     bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
     /* Loop until the user closes the window */
@@ -287,7 +288,7 @@ int main(void)
         }
 
         if(dots.size() > 2 + powerPolar){
-            polarPoints = computePolarPoints(0,1,10*dots.size(), 0.3, powerPolar, polarLines);
+            polarPoints = computePolarPoints(0,1,10*dots.size(), p, powerPolar, polarLines);
             glColor3f(1.0f, 1.0f, 0.0f);
             glBegin( GL_LINES);
             for(std::size_t i = 1; i < polarPoints.size(); ++i)
@@ -298,9 +299,22 @@ int main(void)
             glEnd();
 
             glColor3f(0.0f, 1.0f, 1.0f);
-
+            polarLines.clear();
+            for(std::size_t currentPower = 0; currentPower < powerPolar; ++currentPower)
+            {
+                for(std::size_t currentPoint = 1; currentPoint < dots.size() - currentPower; ++currentPoint)
+                {
+                    polarLines.push_back(std::make_pair((1 - p) * dots[currentPoint - 1].first + p * dots[currentPoint].first, (1 - p) * dots[currentPoint - 1].second + p * dots[currentPoint].second));
+                }
+            }
             glBegin(GL_POINTS);
+            for(auto dot : polarLines)
+            {
+                glVertex3d(dot.first / (SCREEN_WIDTH / 2), - dot.second / (SCREEN_HEIGHT / 2), 0);
+            }
             glEnd();
+
+
             glBegin( GL_LINES);
             for(std::size_t i = 1; i < polarLines.size(); ++i)
             {
