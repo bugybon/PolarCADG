@@ -212,10 +212,36 @@ int main(void)
             if(powerPolar > p.size())
             {
                 p.push_back(0.0f);
+                int index;
+                for(std::size_t currentPoint = 1; currentPoint < dots.size() - powerPolar; ++currentPoint)
+                    {
+                        if(currentPower==0)
+                        {
+                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * dots[currentPoint - 1].first + p[currentPower] * dots[currentPoint].first,
+                                                            (1 - p[currentPower]) * dots[currentPoint - 1].second + p[currentPower] * dots[currentPoint].second));
+                        }
+                        else if (currentPower%2 == 1)
+                        {
+                        index = polarLines.size() - 2*currentPoint + 1;
+                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index - 1].first + p[currentPower] * polarLines[index].first,
+                                                            (1 - p[currentPower]) * polarLines[index - 1].second + p[currentPower] * polarLines[index].second));
+                        }
+                        else
+                        {
+                        index = polarLines.size() - 2*currentPoint + 1;
+                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index].first + p[currentPower] * polarLines[index - 1].first,
+                                                            (1 - p[currentPower]) * polarLines[index].second + p[currentPower] * polarLines[index - 1].second));
+                        }
+                    }
             }
             else if(powerPolar < p.size())
             {
                 p.pop_back();
+
+                for(int i = 0; i < dots.size() - powerPolar - 1; ++i)
+                {
+                    polarLines.pop_back();
+                }
             }
             for(int i = 0; i < powerPolar; ++i)
             {
@@ -313,31 +339,31 @@ int main(void)
             if(printPolygon)
             {
                 glColor3f(0.0f, 1.0f, 1.0f);
-                polarLines.clear();
-                int index;
-                for(std::size_t currentPower = 0; currentPower < powerPolar; ++currentPower)
-                {
-                    for(std::size_t currentPoint = 1; currentPoint < dots.size() - currentPower; ++currentPoint)
-                    {
-                        if(currentPower==0)
-                        {
-                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * dots[currentPoint - 1].first + p[currentPower] * dots[currentPoint].first,
-                                                            (1 - p[currentPower]) * dots[currentPoint - 1].second + p[currentPower] * dots[currentPoint].second));
-                        }
-                        else if (currentPower%2 == 1)
-                        {
-                        index = polarLines.size() - 2*currentPoint + 1;
-                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index - 1].first + p[currentPower] * polarLines[index].first,
-                                                            (1 - p[currentPower]) * polarLines[index - 1].second + p[currentPower] * polarLines[index].second));
-                        }
-                        else
-                        {
-                        index = polarLines.size() - 2*currentPoint + 1;
-                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index].first + p[currentPower] * polarLines[index - 1].first,
-                                                            (1 - p[currentPower]) * polarLines[index].second + p[currentPower] * polarLines[index - 1].second));
-                        }
-                    }
-                }
+                // polarLines.clear();
+                // int index;
+                // for(std::size_t currentPower = 0; currentPower < powerPolar; ++currentPower)
+                // {
+                //     for(std::size_t currentPoint = 1; currentPoint < dots.size() - currentPower; ++currentPoint)
+                //     {
+                //         if(currentPower==0)
+                //         {
+                //         polarLines.push_back(std::make_pair((1 - p[currentPower]) * dots[currentPoint - 1].first + p[currentPower] * dots[currentPoint].first,
+                //                                             (1 - p[currentPower]) * dots[currentPoint - 1].second + p[currentPower] * dots[currentPoint].second));
+                //         }
+                //         else if (currentPower%2 == 1)
+                //         {
+                //         index = polarLines.size() - 2*currentPoint + 1;
+                //         polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index - 1].first + p[currentPower] * polarLines[index].first,
+                //                                             (1 - p[currentPower]) * polarLines[index - 1].second + p[currentPower] * polarLines[index].second));
+                //         }
+                //         else
+                //         {
+                //         index = polarLines.size() - 2*currentPoint + 1;
+                //         polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index].first + p[currentPower] * polarLines[index - 1].first,
+                //                                             (1 - p[currentPower]) * polarLines[index].second + p[currentPower] * polarLines[index - 1].second));
+                //         }
+                //     }
+                // }
                 glBegin(GL_POINTS);
                 for(auto dot : polarLines)
                 {
