@@ -300,7 +300,7 @@ int main(void)
             glColor3f(0.0f, 1.0f, 1.0f);
 
             glBegin(GL_POINTS);
-
+            glEnd();
             glBegin( GL_LINES);
             for(std::size_t i = 1; i < polarLines.size(); ++i)
             {
