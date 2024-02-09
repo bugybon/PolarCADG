@@ -35,7 +35,7 @@ typedef std::vector<coords> points;
 points dots;
 std::size_t gottenPointIndex;
 
-coords deCasteljau(std::size_t r, std::size_t i, double t)
+coords deCasteljau(std::size_t r, std::size_t i, float t)
 {
     if(r == 0)
         return dots[i];
@@ -44,41 +44,37 @@ coords deCasteljau(std::size_t r, std::size_t i, double t)
     return std::make_pair((1 - t) * p1.first + t * p2.first, (1 - t) * p1.second + t * p2.second);
 }
 
-coords polar(std::size_t r, std::size_t i, double t, double p, std::size_t power, points& polarLines)
+coords polar(std::size_t r, std::size_t i, float t, std::vector<float> p, std::size_t power, points& polarLines)
 {
     if(r == 0)
         return dots[i];
     coords p1 = polar(r-1, i, t, p, power, polarLines),
            p2 = polar(r-1, i+1,t, p, power, polarLines);
-    // if (std::find(dots.begin(), dots.end(), p1) == dots.end() && std::find(polarLines.begin(), polarLines.end(), p1) == polarLines.end())
-    //     polarLines.push_back(p1);
-    // if (std::find(dots.begin(), dots.end(), p2) == dots.end() && std::find(polarLines.begin(), polarLines.end(), p2) == polarLines.end())
-    //     polarLines.push_back(p2);
     if(r <= power){
-        return std::make_pair((1 - p) * p1.first + p * p2.first, (1 - p) * p1.second + p * p2.second);
+        return std::make_pair((1 - p[r-1]) * p1.first + p[r-1] * p2.first, (1 - p[r-1]) * p1.second + p[r-1] * p2.second);
     }
     return std::make_pair((1 - t) * p1.first + t * p2.first, (1 - t) * p1.second + t * p2.second);
 }
 
-points computePoints(double minT, double maxT, std::size_t segments)
+points computePoints(float minT, float maxT, std::size_t segments)
 {
     points pointlist;
-    double t;
+    float t;
     for(std::size_t i = 0; i <= segments; ++i)
     {
-        t = minT + i/(double)segments * (maxT - minT);
+        t = minT + i/(float)segments * (maxT - minT);
         pointlist.push_back(deCasteljau(dots.size() - 1, 0, t));
     }
     return pointlist;
 }
 
-points computePolarPoints(double minT, double maxT, std::size_t segments, double p, std::size_t power, points& polarLines)
+points computePolarPoints(float minT, float maxT, std::size_t segments, std::vector<float> p, std::size_t power, points& polarLines)
 {
     points pointlist;
-    double t;
+    float t;
     for(std::size_t i = 0; i <= segments; ++i)
     {
-        t = minT + i/(double)segments * (maxT - minT);
+        t = minT + i/(float)segments * (maxT - minT);
         pointlist.push_back(polar(dots.size() - 1, 0, t, p, power, polarLines));
     }
     return pointlist;
@@ -177,9 +173,12 @@ int main(void)
 
     points bezierPoints, polarPoints, polarLines;
     int powerPolar = 1;
-    double p = 0.3;
+    std::vector<float> p;
+    p.push_back(0.3f);
     gottenPointIndex = -1;
     bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
+    int printPolygon = false, printPolar = true;
+    static const float ratio[] = {80, 120};
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {   
@@ -197,15 +196,34 @@ int main(void)
             static int op = EASY;
             static int property = 20;
             nk_layout_row_static(ctx, 30, 80, 1);
-            if (nk_button_label(ctx, "button"))
+            if (nk_button_label(ctx, "Clear"))
+            {
                 fprintf(stdout, "button pressed\n");
+                dots.clear();
+            }
+            nk_layout_row_dynamic(ctx, 30, 1);
+            nk_checkbox_label(ctx, "Draw Polar", &printPolar);
+            nk_layout_row_dynamic(ctx, 30, 1);
+            nk_checkbox_label(ctx, "Draw polar's polygon", &printPolygon);
 
-            nk_layout_row_dynamic(ctx, 30, 2);
-            if (nk_option_label(ctx, "easy", op == EASY)) op = EASY;
-            if (nk_option_label(ctx, "hard", op == HARD)) op = HARD;
-
-            nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_int(ctx, "Compression:", 0, &property, 100, 10, 1);
+            nk_layout_row(ctx, NK_STATIC, 25, 2, ratio);
+            nk_label(ctx, "Polar power:", NK_TEXT_LEFT);
+            nk_property_int(ctx, "", 0, &powerPolar, (int)dots.size() - 3, 1, 2);
+            if(powerPolar > p.size())
+            {
+                p.push_back(0.0f);
+            }
+            else if(powerPolar < p.size())
+            {
+                p.pop_back();
+            }
+            for(int i = 0; i < powerPolar; ++i)
+            {
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_labelf(ctx, NK_TEXT_LEFT, "t%d: %.3f" , i+1, p[i]);
+                nk_layout_row_dynamic(ctx, 30, 1);
+                nk_slider_float(ctx, 0.0f, &p[i], 1.0f, 0.001f);
+            }
 
             nk_layout_row_dynamic(ctx, 20, 1);
             nk_label(ctx, "background:", NK_TEXT_LEFT);
@@ -255,16 +273,20 @@ int main(void)
         if(gottenPointIndex != -1){
             GLdouble xpos, ypos;
             glfwGetCursorPos(window, &xpos, &ypos);
-            if(xpos < MENU_WIDTH + POINT_RADIUS ){
+            if(xpos < MENU_WIDTH + POINT_RADIUS )
+            {
                 xpos = MENU_WIDTH + POINT_RADIUS;
             }
-            if(xpos > SCREEN_WIDTH - POINT_RADIUS){
+            if(xpos > SCREEN_WIDTH - POINT_RADIUS)
+            {
                 xpos = SCREEN_WIDTH - POINT_RADIUS;
             }
-            if(ypos < POINT_RADIUS){
+            if(ypos < POINT_RADIUS)
+            {
                 ypos = POINT_RADIUS;
             }
-            if(ypos > SCREEN_HEIGHT - POINT_RADIUS){
+            if(ypos > SCREEN_HEIGHT - POINT_RADIUS)
+            {
                 ypos = SCREEN_HEIGHT - POINT_RADIUS;
             }
             xpos = xpos - SCREEN_WIDTH/2;
@@ -288,40 +310,63 @@ int main(void)
         }
 
         if(dots.size() > 2 + powerPolar){
-            polarPoints = computePolarPoints(0,1,10*dots.size(), p, powerPolar, polarLines);
-            glColor3f(1.0f, 1.0f, 0.0f);
-            glBegin( GL_LINES);
-            for(std::size_t i = 1; i < polarPoints.size(); ++i)
+            if(printPolygon)
             {
-                glVertex3d(polarPoints[i - 1].first / (SCREEN_WIDTH / 2), - polarPoints[i - 1].second / (SCREEN_HEIGHT / 2), 0);
-                glVertex3d(polarPoints[i].first / (SCREEN_WIDTH / 2), - polarPoints[i].second / (SCREEN_HEIGHT / 2), 0);
-            }
-            glEnd();
-
-            glColor3f(0.0f, 1.0f, 1.0f);
-            polarLines.clear();
-            for(std::size_t currentPower = 0; currentPower < powerPolar; ++currentPower)
-            {
-                for(std::size_t currentPoint = 1; currentPoint < dots.size() - currentPower; ++currentPoint)
+                glColor3f(0.0f, 1.0f, 1.0f);
+                polarLines.clear();
+                int index;
+                for(std::size_t currentPower = 0; currentPower < powerPolar; ++currentPower)
                 {
-                    polarLines.push_back(std::make_pair((1 - p) * dots[currentPoint - 1].first + p * dots[currentPoint].first, (1 - p) * dots[currentPoint - 1].second + p * dots[currentPoint].second));
+                    for(std::size_t currentPoint = 1; currentPoint < dots.size() - currentPower; ++currentPoint)
+                    {
+                        if(currentPower==0)
+                        {
+                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * dots[currentPoint - 1].first + p[currentPower] * dots[currentPoint].first,
+                                                            (1 - p[currentPower]) * dots[currentPoint - 1].second + p[currentPower] * dots[currentPoint].second));
+                        }
+                        else if (currentPower%2 == 1)
+                        {
+                        index = polarLines.size() - 2*currentPoint + 1;
+                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index - 1].first + p[currentPower] * polarLines[index].first,
+                                                            (1 - p[currentPower]) * polarLines[index - 1].second + p[currentPower] * polarLines[index].second));
+                        }
+                        else
+                        {
+                        index = polarLines.size() - 2*currentPoint + 1;
+                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index].first + p[currentPower] * polarLines[index - 1].first,
+                                                            (1 - p[currentPower]) * polarLines[index].second + p[currentPower] * polarLines[index - 1].second));
+                        }
+                    }
                 }
-            }
-            glBegin(GL_POINTS);
-            for(auto dot : polarLines)
-            {
-                glVertex3d(dot.first / (SCREEN_WIDTH / 2), - dot.second / (SCREEN_HEIGHT / 2), 0);
-            }
-            glEnd();
+                glBegin(GL_POINTS);
+                for(auto dot : polarLines)
+                {
+                    glVertex3d(dot.first / (SCREEN_WIDTH / 2), - dot.second / (SCREEN_HEIGHT / 2), 0);
+                }
+                glEnd();
 
 
-            glBegin( GL_LINES);
-            for(std::size_t i = 1; i < polarLines.size(); ++i)
-            {
-                glVertex3d(polarLines[i - 1].first / (SCREEN_WIDTH / 2), - polarLines[i - 1].second / (SCREEN_HEIGHT / 2), 0);
-                glVertex3d(polarLines[i].first / (SCREEN_WIDTH / 2), - polarLines[i].second / (SCREEN_HEIGHT / 2), 0);
+                glBegin( GL_LINES);
+                for(std::size_t i = 1; i < polarLines.size(); ++i)
+                {
+                    glVertex3d(polarLines[i - 1].first / (SCREEN_WIDTH / 2), - polarLines[i - 1].second / (SCREEN_HEIGHT / 2), 0);
+                    glVertex3d(polarLines[i].first / (SCREEN_WIDTH / 2), - polarLines[i].second / (SCREEN_HEIGHT / 2), 0);
+                }
+                glEnd();
             }
-            glEnd();
+
+            if(printPolar && powerPolar > 0)
+            {
+                polarPoints = computePolarPoints(0,1,10*dots.size(), p, powerPolar, polarLines);
+                glColor3f(1.0f, 1.0f, 0.0f);
+                glBegin( GL_LINES);
+                for(std::size_t i = 1; i < polarPoints.size(); ++i)
+                {
+                    glVertex3d(polarPoints[i - 1].first / (SCREEN_WIDTH / 2), - polarPoints[i - 1].second / (SCREEN_HEIGHT / 2), 0);
+                    glVertex3d(polarPoints[i].first / (SCREEN_WIDTH / 2), - polarPoints[i].second / (SCREEN_HEIGHT / 2), 0);
+                }
+                glEnd();
+            }
         }
         /* Swap front and back buffers */
         nk_glfw3_render(NK_ANTI_ALIASING_ON);
