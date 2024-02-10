@@ -172,9 +172,8 @@ int main(void)
 
 
     points bezierPoints, polarPoints, polarLines;
-    int powerPolar = 1;
+    int powerPolar = 0;
     std::vector<float> p;
-    p.push_back(0.3f);
     gottenPointIndex = -1;
     bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
     int printPolygon = false, printPolar = true;
@@ -192,14 +191,12 @@ int main(void)
         if (nk_begin(ctx, "Contorls", nk_rect(0, 0, MENU_WIDTH, SCREEN_HEIGHT),
             NK_WINDOW_TITLE))
         {
-            enum {EASY, HARD};
-            static int op = EASY;
-            static int property = 20;
             nk_layout_row_static(ctx, 30, 80, 1);
             if (nk_button_label(ctx, "Clear"))
             {
-                fprintf(stdout, "button pressed\n");
                 dots.clear();
+                p.clear();
+                powerPolar = 0;
             }
             nk_layout_row_dynamic(ctx, 30, 1);
             nk_checkbox_label(ctx, "Draw Polar", &printPolar);
