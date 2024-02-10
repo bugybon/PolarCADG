@@ -172,9 +172,8 @@ int main(void)
 
 
     points bezierPoints, polarPoints, polarLines;
-    int powerPolar = 1;
+    int powerPolar = 0;
     std::vector<float> p;
-    p.push_back(0.3f);
     gottenPointIndex = -1;
     bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
     int printPolygon = false, printPolar = true;
@@ -211,28 +210,29 @@ int main(void)
             nk_property_int(ctx, "", 0, &powerPolar, (int)dots.size() - 3, 1, 2);
             if(powerPolar > p.size())
             {
-                p.push_back(0.0f);
                 int index;
-                for(std::size_t currentPoint = 1; currentPoint < dots.size() - powerPolar; ++currentPoint)
+                int previosPower = p.size();
+                p.push_back(0.0f);
+                for(std::size_t currentPoint = 1; currentPoint < dots.size() - previosPower; ++currentPoint)
+                {
+                    if(previosPower==0)
                     {
-                        if(currentPower==0)
-                        {
-                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * dots[currentPoint - 1].first + p[currentPower] * dots[currentPoint].first,
-                                                            (1 - p[currentPower]) * dots[currentPoint - 1].second + p[currentPower] * dots[currentPoint].second));
-                        }
-                        else if (currentPower%2 == 1)
-                        {
-                        index = polarLines.size() - 2*currentPoint + 1;
-                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index - 1].first + p[currentPower] * polarLines[index].first,
-                                                            (1 - p[currentPower]) * polarLines[index - 1].second + p[currentPower] * polarLines[index].second));
-                        }
-                        else
-                        {
-                        index = polarLines.size() - 2*currentPoint + 1;
-                        polarLines.push_back(std::make_pair((1 - p[currentPower]) * polarLines[index].first + p[currentPower] * polarLines[index - 1].first,
-                                                            (1 - p[currentPower]) * polarLines[index].second + p[currentPower] * polarLines[index - 1].second));
-                        }
+                    polarLines.push_back(std::make_pair((1 - p[previosPower]) * dots[currentPoint - 1].first + p[previosPower] * dots[currentPoint].first,
+                                                        (1 - p[previosPower]) * dots[currentPoint - 1].second + p[previosPower] * dots[currentPoint].second));
                     }
+                    else if (previosPower%2 == 1)
+                    {
+                    index = polarLines.size() - 2*currentPoint + 1;
+                    polarLines.push_back(std::make_pair((1 - p[previosPower]) * polarLines[index - 1].first + p[previosPower] * polarLines[index].first,
+                                                        (1 - p[previosPower]) * polarLines[index - 1].second + p[previosPower] * polarLines[index].second));
+                    }
+                    else
+                    {
+                    index = polarLines.size() - 2*currentPoint + 1;
+                    polarLines.push_back(std::make_pair((1 - p[previosPower]) * polarLines[index].first + p[previosPower] * polarLines[index - 1].first,
+                                                        (1 - p[previosPower]) * polarLines[index].second + p[previosPower] * polarLines[index - 1].second));
+                    }
+                }
             }
             else if(powerPolar < p.size())
             {
@@ -243,12 +243,21 @@ int main(void)
                     polarLines.pop_back();
                 }
             }
+            
             for(int i = 0; i < powerPolar; ++i)
             {
                 nk_layout_row_dynamic(ctx, 30, 1);
                 nk_labelf(ctx, NK_TEXT_LEFT, "t%d: %.3f" , i+1, p[i]);
                 nk_layout_row_dynamic(ctx, 30, 1);
-                nk_slider_float(ctx, 0.0f, &p[i], 1.0f, 0.001f);
+                if(nk_slider_float(ctx, 0.0f, &p[i], 1.0f, 0.001f))
+                {
+                    std::cout << "changed " << i << std::endl;
+
+                }
+            }
+
+            for(int i = 0; i < powerPolar; ++i)
+            {
             }
 
             nk_layout_row_dynamic(ctx, 20, 1);
